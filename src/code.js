@@ -8,6 +8,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { isTextNode, getAllFonts } from '@figma-plugin/helpers';
 figma.showUI(__html__);
+const storeClientData = (key, val) => __awaiter(this, void 0, void 0, function* () {
+    yield figma.clientStorage.setAsync(key, val);
+});
+const retrieveClientData = (key) => __awaiter(this, void 0, void 0, function* () {
+    return yield figma.clientStorage.getAsync(key);
+});
 const getTextNodes = nodes => nodes.reduce((acc, node) => {
     if (isTextNode(node)) {
         acc.push(node);
@@ -15,33 +21,40 @@ const getTextNodes = nodes => nodes.reduce((acc, node) => {
     return acc;
 }, []);
 figma.ui.onmessage = (msg) => __awaiter(this, void 0, void 0, function* () {
-    if (msg.type === 'getFontNames') {
-        const selectedTextNodes = getTextNodes(figma.currentPage.selection);
-        if (selectedTextNodes.length === 0) {
-            figma.closePlugin('Select some text objects first!');
-        }
+    if (msg.type === 'saveShouldKeepOpenStatus') {
+        yield storeClientData('shouldKeepOpen', msg.shouldKeepOpen);
+    }
+    if (msg.type === 'loadInitialState') {
         const nodes = figma.currentPage.children;
         const textNodes = getTextNodes(nodes);
         const fontNames = getAllFonts(textNodes);
+        const shouldKeepOpen = yield retrieveClientData('shouldKeepOpen');
         figma.ui.postMessage({
             fontNames,
+            shouldKeepOpen
         });
     }
     if (msg.type === 'applyFont') {
+        const selectedTextNodes = getTextNodes(figma.currentPage.selection);
+        if (selectedTextNodes.length === 0) {
+            // No idea why I need to cast this...
+            figma.notify('Select some text objects first!');
+            return;
+        }
         const { family, style } = msg.fontName;
         yield figma.loadFontAsync({
             family,
             style,
         });
-        figma.currentPage.selection
-            .filter(node => node.type === 'TEXT')
-            .map(textNode => {
+        selectedTextNodes.map(textNode => {
             textNode.fontName = {
                 family,
                 style,
             };
         });
-        figma.closePlugin();
+        if (!msg.shouldKeepOpen) {
+            figma.closePlugin();
+        }
     }
     if (msg.type === 'close') {
         figma.closePlugin();

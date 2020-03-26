@@ -4,10 +4,7 @@ import styled, { createGlobalStyle } from 'styled-components';
 import './ui.css';
 
 // TODO: missing fonts?
-// TODO: support clicking
 // TODO: handle / prevent blurring
-// TODO: suppress "regular" from labels
-// TODO: handle nothing selected
 
 const GlobalStyles = createGlobalStyle`
     * {
@@ -24,14 +21,31 @@ const GlobalStyles = createGlobalStyle`
 
 const StyledAppContainer = styled.div``;
 
-const FontCard = styled.div`
+const BaseCard = styled.div`
+    background: white;
     padding: 10px 16px;
 
     & + & {
         border-top: 1px solid #e8e8e8;
     }
+`;
+
+const OptionBar = styled(BaseCard)`
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-top: 1px solid #e8e8e8;
+`;
+
+const FontCard = styled(BaseCard)`
+    cursor: pointer;
+
+    &:hover {
+        background-color: rgba(0, 186, 255, 0.2);
+    }
     &:focus {
-        background-color: #00adfe;
+        background-color: rgba(0, 186, 255, 1);
         color: white;
     }
 `;
@@ -56,34 +70,48 @@ const getUniqueKey = (fontName) => `${fontName.family}-${fontName.style}`;
 
 const App = () => {
     const [fontNames, setFontNames] = React.useState([]);
+    const [shouldKeepOpen, setShouldKeepOpen] = React.useState(false);
     const [isLoaded, setIsLoaded] = React.useState(false);
     const fontRefs = {};
 
     React.useEffect(() => {
         onmessage = (message) => {
-            const sortedFontNames = message.data.pluginMessage.fontNames.sort(
-                (a, b) => {
-                    return a.family < b.family
-                        ? -1
-                        : b.family < a.family
-                        ? 1
-                        : 0;
-                },
-            );
+            const {
+                fontNames: storedFontNames,
+                shouldKeepOpen: storedShouldKeepOpen,
+            } = message.data.pluginMessage;
+            const sortedFontNames = storedFontNames.sort((a, b) => {
+                return a.family < b.family ? -1 : b.family < a.family ? 1 : 0;
+            });
             setFontNames(sortedFontNames);
+            setShouldKeepOpen(storedShouldKeepOpen);
             setIsLoaded(true);
         };
-
-        sendMessage({ type: 'getFontNames' });
+        sendMessage({ type: 'loadInitialState' });
     }, []);
 
     React.useEffect(() => {
         if (!isLoaded) {
             return;
         }
+
         const firstFontRef = fontRefs[getUniqueKey(fontNames[0])];
+
         firstFontRef.focus();
     }, [fontRefs, fontNames, isLoaded]);
+
+    React.useEffect(() => {
+        if (isLoaded) {
+            sendMessage({
+                type: 'saveShouldKeepOpenStatus',
+                shouldKeepOpen,
+            });
+        }
+    }, [isLoaded, shouldKeepOpen]);
+
+    const handleClick = (fontName) => {
+        sendMessage({ type: 'applyFont', fontName, shouldKeepOpen });
+    };
 
     const handleKeyDown = (evt, fontName) => {
         evt.preventDefault();
@@ -94,7 +122,11 @@ const App = () => {
         }
 
         if (evt.key === 'Enter') {
-            sendMessage({ type: 'applyFont', fontName });
+            sendMessage({
+                type: 'applyFont',
+                fontName,
+                shouldKeepOpen,
+            });
             return;
         }
 
@@ -114,20 +146,40 @@ const App = () => {
             <GlobalStyles />
             {!isLoaded && <div>...loading... </div>}
             {isLoaded && !fontNames.length && <div>No text nodes found 🤔</div>}
-            {isLoaded &&
-                fontNames.map((fontName) => {
-                    const key = getUniqueKey(fontName);
-                    return (
-                        <FontCard
-                            key={key}
-                            ref={(ref) => (fontRefs[key] = ref)}
-                            tabIndex={0}
-                            onKeyDown={(evt) => handleKeyDown(evt, fontName)}
-                        >
-                            {fontName.family} {fontName.style}
-                        </FontCard>
-                    );
-                })}
+            {isLoaded && (
+                <>
+                    <OptionBar>
+                        <label>
+                            <input
+                                type="checkbox"
+                                checked={shouldKeepOpen}
+                                onChange={() =>
+                                    setShouldKeepOpen(!shouldKeepOpen)
+                                }
+                            />{' '}
+                            Keep Open
+                        </label>
+                    </OptionBar>
+
+                    {fontNames.map((fontName) => {
+                        const key = getUniqueKey(fontName);
+                        return (
+                            <FontCard
+                                key={key}
+                                ref={(ref) => (fontRefs[key] = ref)}
+                                tabIndex={0}
+                                onClick={() => handleClick(fontName)}
+                                onKeyDown={(evt) =>
+                                    handleKeyDown(evt, fontName)
+                                }
+                            >
+                                {fontName.family}{' '}
+                                {fontName.style !== 'Regular' && fontName.style}
+                            </FontCard>
+                        );
+                    })}
+                </>
+            )}
         </StyledAppContainer>
     );
 };
