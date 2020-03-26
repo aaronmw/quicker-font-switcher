@@ -2,17 +2,23 @@ import { isTextNode, getAllFonts } from '@figma-plugin/helpers';
 
 figma.showUI(__html__);
 
+const getTextNodes = nodes => nodes.reduce((acc, node) => {
+    if (isTextNode(node)) {
+        acc.push(node);
+    }
+    return acc;
+}, []);
+
 figma.ui.onmessage = async msg => {
     if (msg.type === 'getFontNames') {
+        const selectedTextNodes = getTextNodes(figma.currentPage.selection);
+
+        if (selectedTextNodes.length === 0) {
+            figma.closePlugin('Select some text objects first!');
+        }
+
         const nodes = figma.currentPage.children;
-
-        const textNodes = nodes.reduce((acc, node) => {
-            if (isTextNode(node)) {
-                acc.push(node);
-            }
-            return acc;
-        }, []);
-
+        const textNodes = getTextNodes(nodes);
         const fontNames = getAllFonts(textNodes);
 
         figma.ui.postMessage({

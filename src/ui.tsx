@@ -3,6 +3,12 @@ import * as ReactDOM from 'react-dom';
 import styled, { createGlobalStyle } from 'styled-components';
 import './ui.css';
 
+// TODO: missing fonts?
+// TODO: support clicking
+// TODO: handle / prevent blurring
+// TODO: suppress "regular" from labels
+// TODO: handle nothing selected
+
 const GlobalStyles = createGlobalStyle`
     * {
         margin: 0;
