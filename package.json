@@ -1,6 +1,6 @@
 {
     "name": "quicker-font-switcher",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "A Figma plugin for quickly switching between fonts used in the document",
     "main": "code.js",
     "scripts": {
