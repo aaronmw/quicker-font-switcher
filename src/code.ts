@@ -1,8 +1,12 @@
 import { isTextNode, getAllFonts } from '@figma-plugin/helpers';
 
+const WINDOW_WIDTH = 300;
+const DEFAULT_WINDOW_HEIGHT = 270;
+const MAX_WINDOW_HEIGHT = 500;
+
 figma.showUI(__html__, {
-    width: 300,
-    height: 270,
+    width: WINDOW_WIDTH,
+    height: DEFAULT_WINDOW_HEIGHT,
 });
 
 const storeClientData = async (key, val) => {
@@ -31,6 +35,11 @@ const updateUI = async () => {
         shouldKeepOpen,
         shouldSearchEntireDocument,
     });
+
+    figma.ui.resize(
+        WINDOW_WIDTH,
+        Math.min(35 * (fontNames.length + 1), MAX_WINDOW_HEIGHT),
+    );
 };
 
 figma.ui.onmessage = async (msg) => {

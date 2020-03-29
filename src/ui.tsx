@@ -13,6 +13,7 @@ const GlobalStyles = createGlobalStyle`
     :root {
         font-family: Roboto, sans-serif;
         font-size: 12px;
+        background: radial-gradient(white, hsl(0, 0%, 95%));
     }
 `;
 
@@ -60,7 +61,6 @@ const FullScreenMessage = styled.div`
     display: flex;
     justify-content: center;
     align-items: center;
-    background: radial-gradient(white, hsl(0, 0%, 95%));
 `;
 
 const KEY_STEP_MAP = {
@@ -99,14 +99,21 @@ const App = () => {
                 shouldSearchEntireDocument: storedShouldSearchEntireDocument,
             } = message.data.pluginMessage;
             const sortedFontNames = storedFontNames.sort((a, b) => {
-                return a.family < b.family ? -1 : b.family < a.family ? 1 : 0;
+                const aKey = getUniqueKey(a);
+                const bKey = getUniqueKey(b);
+                return aKey < bKey ? -1 : bKey < aKey ? 1 : 0;
             });
             setFontNames(sortedFontNames);
             setShouldKeepOpen(storedShouldKeepOpen);
             setShouldSearchEntireDocument(storedShouldSearchEntireDocument);
             setIsLoaded(true);
         };
+
         sendMessage({ type: 'loadInitialState' });
+
+        addEventListener('focus', (e) => {
+            sendMessage({ type: 'loadInitialState' });
+        });
     }, []);
 
     React.useEffect(() => {
@@ -172,6 +179,7 @@ const App = () => {
     return (
         <StyledAppContainer>
             <GlobalStyles />
+
             {!isLoaded && <FullScreenMessage>...loading... </FullScreenMessage>}
             {isLoaded && !hasFonts && (
                 <FullScreenMessage>No text nodes found 🤔</FullScreenMessage>
